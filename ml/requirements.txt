@@ -1,0 +1,12 @@
+# Python packages needed to train the phishing detection model.
+# Install with:  pip install -r ml/requirements.txt
+#
+# Note: version pins below are minimums — pip will install a newer
+# compatible version automatically. The old exact pins (1.26.4 etc.)
+# have no pre-built wheels for Python 3.13+.
+
+pandas>=2.2.2
+numpy>=1.26.4
+scikit-learn>=1.5.1
+xgboost>=2.1.1
+joblib>=1.4.2

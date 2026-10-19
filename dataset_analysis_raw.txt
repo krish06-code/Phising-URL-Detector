@@ -1,0 +1,48 @@
+﻿=== LABEL DISTRIBUTION ===
+label
+1    134850
+0    100945
+Name: count, dtype: int64
+label
+1    0.5719
+0    0.4281
+Name: proportion, dtype: float64
+
+=== MISSING VALUES (non-zero only) ===
+Series([], dtype: int64)
+
+=== DUPLICATE ROWS ===
+Total duplicate rows: 0
+
+=== DUPLICATE URLs ===
+Total duplicate URLs: 425
+
+=== UNIQUE LABEL VALUES ===
+[1 0]
+
+=== NUMERIC COLUMNS SUMMARY ===
+Numeric columns count: 51
+        URLLength  DomainLength  IsDomainIP  URLSimilarityIndex  CharContinuationRate  TLDLegitimateProb  URLCharProb   TLDLength  NoOfSubDomain  HasObfuscation  NoOfObfuscatedChar  ObfuscationRatio  NoOfLettersInURL  LetterRatioInURL  NoOfDegitsInURL  DegitRatioInURL  NoOfEqualsInURL  NoOfQMarkInURL  NoOfAmpersandInURL  NoOfOtherSpecialCharsInURL  SpacialCharRatioInURL     IsHTTPS  LineOfCode  LargestLineLength    HasTitle  DomainTitleMatchScore  URLTitleMatchScore  HasFavicon      Robots  IsResponsive  NoOfURLRedirect  NoOfSelfRedirect  HasDescription   NoOfPopup  NoOfiFrame  HasExternalFormSubmit  HasSocialNet  HasSubmitButton  HasHiddenFields  HasPasswordField        Bank         Pay      Crypto  HasCopyrightInfo   NoOfImage     NoOfCSS      NoOfJS  NoOfSelfRef  NoOfEmptyRef  NoOfExternalRef       label
+count  235795.000    235795.000  235795.000          235795.000            235795.000         235795.000   235795.000  235795.000     235795.000      235795.000          235795.000        235795.000        235795.000        235795.000       235795.000       235795.000       235795.000      235795.000          235795.000                  235795.000             235795.000  235795.000  235795.000       2.357950e+05  235795.000             235795.000          235795.000  235795.000  235795.000    235795.000       235795.000        235795.000      235795.000  235795.000  235795.000             235795.000    235795.000       235795.000       235795.000        235795.000  235795.000  235795.000  235795.000        235795.000  235795.000  235795.000  235795.000   235795.000    235795.000       235795.000  235795.000
+mean       34.573        21.470       0.003              78.431                 0.846              0.260        0.056       2.764          1.165           0.002               0.025             0.000            19.429             0.516            1.881            0.029            0.062           0.029               0.025                       2.340                  0.063       0.783    1141.900       1.278953e+04       0.861                 50.131              52.122       0.362       0.267         0.625            0.133             0.040           0.440       0.222       1.589                  0.044         0.457            0.414            0.378             0.102       0.127       0.237       0.023             0.487      26.076       6.333      10.522       65.071         2.378           49.263       0.572
+std        41.314         9.151       0.052              28.976                 0.217              0.252        0.011       0.600          0.601           0.045               1.876             0.004            29.090             0.123           11.887            0.071            0.935           0.194               0.836                       3.528                  0.032       0.412    3419.951       1.522011e+05       0.346                 49.677              49.601       0.481       0.442         0.484            0.340             0.196           0.496       3.871       5.763                  0.205         0.498            0.493            0.485             0.303       0.333       0.425       0.151             0.500      79.412      74.866      22.312      176.688        17.641          161.027       0.495
+min        13.000         4.000       0.000               0.156                 0.000              0.000        0.001       2.000          0.000           0.000               0.000             0.000             0.000             0.000            0.000            0.000            0.000           0.000               0.000                       0.000                  0.000       0.000       2.000       2.200000e+01       0.000                  0.000               0.000       0.000       0.000         0.000            0.000             0.000           0.000       0.000       0.000                  0.000         0.000            0.000            0.000             0.000       0.000       0.000       0.000             0.000       0.000       0.000       0.000        0.000         0.000            0.000       0.000
+25%        23.000        16.000       0.000              57.025                 0.680              0.006        0.051       2.000          1.000           0.000               0.000             0.000            10.000             0.435            0.000            0.000            0.000           0.000               0.000                       1.000                  0.038       1.000      18.000       2.000000e+02       1.000                  0.000               0.000       0.000       0.000         0.000            0.000             0.000           0.000       0.000       0.000                  0.000         0.000            0.000            0.000             0.000       0.000       0.000       0.000             0.000       0.000       0.000       0.000        0.000         0.000            1.000       0.000
+50%        27.000        20.000       0.000             100.000                 1.000              0.080        0.058       3.000          1.000           0.000               0.000             0.000            14.000             0.519            0.000            0.000            0.000           0.000               0.000                       1.000                  0.050       1.000     429.000       1.090000e+03       1.000                 75.000             100.000       0.000       0.000         1.000            0.000             0.000           0.000       0.000       0.000                  0.000         0.000            0.000            0.000             0.000       0.000       0.000       0.000             0.000       8.000       2.000       6.000       12.000         0.000           10.000       1.000
+75%        34.000        24.000       0.000             100.000                 1.000              0.523        0.063       3.000          1.000           0.000               0.000             0.000            20.000             0.594            0.000            0.000            0.000           0.000               0.000                       3.000                  0.083       1.000    1277.000       8.047000e+03       1.000                100.000             100.000       1.000       1.000         1.000            0.000             0.000           1.000       0.000       1.000                  0.000         1.000            1.000            1.000             0.000       0.000       0.000       0.000             1.000      29.000       8.000      15.000       88.000         1.000           57.000       1.000
+max      6097.000       110.000       1.000             100.000                 1.000              0.523        0.091      13.000         10.000           1.000             447.000             0.348          5191.000             0.926         2011.000            0.684          176.000           4.000             149.000                     499.000                  0.397       1.000  442666.000       1.397573e+07       1.000                100.000             100.000       1.000       1.000         1.000            1.000             1.000           1.000     602.000    1602.000                  1.000         1.000            1.000            1.000             1.000       1.000       1.000       1.000             1.000    8956.000   35820.000    6957.000    27397.000      4887.000        27516.000       1.000
+
+=== OBJECT COLUMNS ===
+['FILENAME', 'URL', 'Domain', 'TLD', 'Title']
+
+=== SAMPLE ROWS (label 0 and 1) ===
+--- Phishing sample (label=0 or label=1 ?) ---
+                                URL  URLLength  IsHTTPS  IsDomainIP  NoOfSubDomain  label
+0  https://www.southbankmosaics.com         31        1           0              1      1
+1          https://www.uni-mainz.de         23        1           0              1      1
+                            URL  URLLength  IsHTTPS  IsDomainIP  NoOfSubDomain  label
+11      http://www.teramill.com         22        0           0              1      0
+20  http://www.f0519141.xsph.ru         26        0           0              2      0
+                                URL  URLLength  IsHTTPS  IsDomainIP  NoOfSubDomain  label
+0  https://www.southbankmosaics.com         31        1           0              1      1
+1          https://www.uni-mainz.de         23        1           0              1      1

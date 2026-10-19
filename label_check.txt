@@ -1,0 +1,36 @@
+﻿=== label=1 URLs (first 10) ===
+                                  URL  IsHTTPS  IsDomainIP  URLSimilarityIndex
+0    https://www.southbankmosaics.com        1           0               100.0
+1            https://www.uni-mainz.de        1           0               100.0
+2      https://www.voicefmradio.co.uk        1           0               100.0
+3         https://www.sfnmjournal.com        1           0               100.0
+4  https://www.rewildingargentina.org        1           0               100.0
+5     https://www.globalreporting.org        1           0               100.0
+6          https://www.saffronart.com        1           0               100.0
+7          https://www.nerdscandy.com        1           0               100.0
+8      https://www.hyderabadonline.in        1           0               100.0
+9                 https://www.aap.org        1           0               100.0
+
+=== label=0 URLs (first 10) ===
+                                                                                             URL  IsHTTPS  IsDomainIP  URLSimilarityIndex
+11                                                                       http://www.teramill.com        0           0           82.644628
+20                                                                   http://www.f0519141.xsph.ru        0           0           55.284926
+21                                                                      http://www.shprakserf.gq        0           0           56.551141
+27                                                        https://service-mitld.firebaseapp.com/        1           0           64.645264
+28                                                             http://www.kuradox92.lima-city.de        0           0           45.849802
+29                                                                   https://liuy-9a930.web.app/        1           0           54.515919
+31  https://ipfs.io/ipfs/qmrvvyr84esa2assw9vvwupqjgsdn4c3dwkusfdwzdz3kn?clientid=noc@protocol.ai        1           0            9.669201
+32                                                      http://att-103731-107123.weeblysite.com/        0           0           36.612216
+34                                                           https://hidok4f8zl.firebaseapp.com/        1           0           63.905325
+37                                                                          http://www.ooguy.com        0           0           79.259259
+
+=== FILENAME samples label=1 ===
+['521848.txt', '31372.txt', '597387.txt', '554095.txt', '151578.txt']
+=== FILENAME samples label=0 ===
+['mw42508.txt', 'mw16985.txt', 'mw131249.txt', '7972389.txt', 'mw34096.txt']
+
+=== Mean feature values by label ===
+       URLLength  DomainLength  IsDomainIP  URLSimilarityIndex  CharContinuationRate  TLDLegitimateProb  URLCharProb  TLDLength  NoOfSubDomain  HasObfuscation  NoOfObfuscatedChar  ObfuscationRatio  NoOfLettersInURL  LetterRatioInURL  NoOfDegitsInURL  DegitRatioInURL  NoOfEqualsInURL  NoOfQMarkInURL  NoOfAmpersandInURL  NoOfOtherSpecialCharsInURL
+label                                                                                                                                                                                                                                                                                                                                                      
+0         45.720        24.465       0.006              49.617                 0.728              0.232         0.05      2.819          1.169           0.005               0.058               0.0            28.107             0.568            4.326            0.064            0.145           0.069               0.059                       3.803
+1         26.229        19.229       0.000             100.000                 0.933              0.282         0.06      2.723          1.162           0.000               0.000               0.0            12.933             0.477            0.051            0.002            0.000           0.000               0.000                       1.245

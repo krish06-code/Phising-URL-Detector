@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PayPal - Verify Your Account</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; background: #f5f5f5; }
+    .header { background: #003087; padding: 12px 20px; display: flex; align-items: center; gap: 10px; }
+    .header img { height: 30px; }
+    .header span { color: white; font-size: 20px; font-weight: bold; }
+    .container { max-width: 420px; margin: 40px auto; background: white; border-radius: 8px;
+                 box-shadow: 0 2px 10px rgba(0,0,0,0.15); padding: 30px; }
+    h2 { color: #003087; margin-bottom: 6px; font-size: 22px; }
+    .subtitle { color: #666; font-size: 14px; margin-bottom: 24px; }
+    label { display: block; font-size: 14px; color: #333; margin-bottom: 6px; font-weight: bold; }
+    input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 4px;
+            font-size: 15px; margin-bottom: 16px; }
+    .btn { width: 100%; background: #0070ba; color: white; padding: 14px;
+           border: none; border-radius: 25px; font-size: 16px; cursor: pointer; }
+    .btn:hover { background: #005ea6; }
+    .warning { background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;
+               padding: 10px 14px; margin-bottom: 20px; font-size: 13px; color: #856404; }
+    .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #999; }
+  </style>
+</head>
+<body>
+  <!-- DEMO PAGE — This simulates what a phishing page looks like -->
+  <!-- It is served on localhost for safe demonstration only -->
+  <div class="header">
+    <span>PayPal</span>
+  </div>
+  <div class="container">
+    <div class="warning">
+      ⚠️ <strong>DEMO ONLY</strong> — This is a fake phishing page for educational demonstration. Never enter real credentials on any page like this.
+    </div>
+    <h2>Verify Your Account</h2>
+    <p class="subtitle">Your account has been limited. Please verify your details to restore access.</p>
+    <label>Email or mobile number</label>
+    <input type="email" placeholder="Email or mobile number" />
+    <label>Password</label>
+    <input type="password" placeholder="Password" />
+    <button class="btn">Log In</button>
+    <div class="footer">
+      This page demonstrates a phishing attack simulation.<br>
+      Real PayPal is always at paypal.com — never a different domain.
+    </div>
+  </div>
+</body>
+</html>
