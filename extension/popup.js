@@ -1,4 +1,4 @@
-﻿/**
+/**
  * popup.js
  * ========
  * Controls the PhishGuard popup UI.
@@ -51,6 +51,33 @@ const el = {
   historySection:  document.getElementById("historySection"),
   historyList:     document.getElementById("historyList"),
   clearHistoryBtn: document.getElementById("clearHistoryBtn"),
+  // Brand Impersonation UI Elements (Phase 1)
+  phishingBrandCard:     document.getElementById("phishingBrandCard"),
+  phishingBrandTitle:    document.getElementById("phishingBrandTitle"),
+  phishingBrandDesc:     document.getElementById("phishingBrandDesc"),
+  phishingBrandReasons:  document.getElementById("phishingBrandReasons"),
+  phishingBrandOfficial: document.getElementById("phishingBrandOfficial"),
+  uncertainBrandCard:     document.getElementById("uncertainBrandCard"),
+  uncertainBrandTitle:    document.getElementById("uncertainBrandTitle"),
+  uncertainBrandDesc:     document.getElementById("uncertainBrandDesc"),
+  uncertainBrandReasons:  document.getElementById("uncertainBrandReasons"),
+  uncertainBrandOfficial: document.getElementById("uncertainBrandOfficial"),
+  legitBrandCard:         document.getElementById("legitBrandCard"),
+  legitBrandBadge:        document.getElementById("legitBrandBadge"),
+  // Explainability Elements (Phase 2)
+  explainabilityContainer:   document.getElementById("explainabilityContainer"),
+  breakdownToggleBtn:        document.getElementById("breakdownToggleBtn"),
+  toggleArrow:               document.getElementById("toggleArrow"),
+  breakdownContent:          document.getElementById("breakdownContent"),
+  explanationSummaryText:    document.getElementById("explanationSummaryText"),
+  tierMlTitle:               document.getElementById("tierMlTitle"),
+  tierMlVerdict:             document.getElementById("tierMlVerdict"),
+  tierMlSignalsList:         document.getElementById("tierMlSignalsList"),
+  tierHeuristicTitle:        document.getElementById("tierHeuristicTitle"),
+  tierRegisteredDomain:      document.getElementById("tierRegisteredDomain"),
+  tierHeuristicSignalsList:  document.getElementById("tierHeuristicSignalsList"),
+  tierThreatIntelStatus:     document.getElementById("tierThreatIntelStatus"),
+  tierThreatIntelDesc:       document.getElementById("tierThreatIntelDesc"),
 };
 
 const ALL_STATES = [
@@ -64,6 +91,11 @@ const ALL_STATES = [
 function showState(stateEl) {
   ALL_STATES.forEach((s) => s.classList.add("hidden"));
   stateEl.classList.remove("hidden");
+
+  // Hide explainability container if state is idle, scanning, error, or unsupported
+  if (stateEl === el.stateIdle || stateEl === el.stateScanning || stateEl === el.stateError || stateEl === el.stateUnsupported) {
+    if (el.explainabilityContainer) el.explainabilityContainer.classList.add("hidden");
+  }
 }
 
 function setStatusDot(status) {
@@ -117,28 +149,193 @@ function setRiskMeter(barEl, displayEl, riskScore, type) {
     : "Score: " + pct + "% (" + riskScore.toFixed(2) + ")";
 }
 
+/**
+ * Renders a brand impersonation alert card into the specified DOM elements.
+ */
+function renderBrandCard(cardEl, titleEl, descEl, reasonsEl, officialEl, brandAnalysis) {
+  if (!cardEl || !brandAnalysis || !brandAnalysis.is_impersonation) {
+    if (cardEl) cardEl.classList.add("hidden");
+    return;
+  }
+
+  const brandName = brandAnalysis.brand || "Protected Brand";
+  const threatTypeLabels = {
+    misleading_subdomain: "Misleading Subdomain",
+    typosquatting: "Typosquatting Mimic",
+    combosquatting: "Combosquatting Pattern",
+    homograph: "IDN Homograph Look-alike",
+  };
+  const threatLabel = threatTypeLabels[brandAnalysis.threat_type] || "Brand Impersonation";
+
+  titleEl.textContent = `⚠️ Resembles ${brandName} (${threatLabel})`;
+  descEl.textContent = brandAnalysis.warning || `This domain appears to imitate ${brandName}.`;
+
+  reasonsEl.innerHTML = "";
+  if (Array.isArray(brandAnalysis.reasons) && brandAnalysis.reasons.length > 0) {
+    brandAnalysis.reasons.forEach((reason) => {
+      const li = document.createElement("li");
+      li.textContent = reason;
+      reasonsEl.appendChild(li);
+    });
+  }
+
+  if (Array.isArray(brandAnalysis.official_domains) && brandAnalysis.official_domains.length > 0) {
+    const topDomains = brandAnalysis.official_domains.slice(0, 3).join(", ");
+    officialEl.innerHTML = `Official domain(s): <strong>${topDomains}</strong>`;
+    officialEl.classList.remove("hidden");
+  } else {
+    officialEl.classList.add("hidden");
+  }
+
+  cardEl.classList.remove("hidden");
+}
+
 // ------------------------------------------------------------------
 // Render result
 // ------------------------------------------------------------------
 function renderResult(result) {
-  const { prediction, risk_score, risk_level, message, model_version, scanned_at } = result;
+  const { prediction, risk_score, risk_level, message, model_version, scanned_at, brand_analysis } = result;
   el.scanMeta.classList.remove("hidden");
   el.scanTime.textContent = scanned_at ? "Scanned: " + formatTime(scanned_at) : "";
   el.modelVersion.textContent = model_version ? "Model v" + model_version : "";
 
+  // Reset brand cards
+  if (el.phishingBrandCard) el.phishingBrandCard.classList.add("hidden");
+  if (el.uncertainBrandCard) el.uncertainBrandCard.classList.add("hidden");
+  if (el.legitBrandCard) el.legitBrandCard.classList.add("hidden");
+
   if (prediction === "phishing" || risk_level === "high") {
     el.phishingMessage.textContent = message || "This URL shows characteristics of a phishing site.";
     setRiskMeter(el.riskBar, el.riskScoreDisplay, risk_score, "phishing");
+    renderBrandCard(
+      el.phishingBrandCard,
+      el.phishingBrandTitle,
+      el.phishingBrandDesc,
+      el.phishingBrandReasons,
+      el.phishingBrandOfficial,
+      brand_analysis
+    );
     showState(el.statePhishing);
   } else if (risk_level === "medium") {
     el.uncertainMessage.textContent = message || "This URL has some unusual characteristics. Proceed with caution.";
     setRiskMeter(el.riskBarUncertain, el.riskScoreDisplayUncertain, risk_score, "uncertain");
+    renderBrandCard(
+      el.uncertainBrandCard,
+      el.uncertainBrandTitle,
+      el.uncertainBrandDesc,
+      el.uncertainBrandReasons,
+      el.uncertainBrandOfficial,
+      brand_analysis
+    );
     showState(el.stateUncertain);
   } else {
     el.legitMessage.textContent = message || "This URL appears to have the structure of a legitimate site.";
     setRiskMeter(el.riskBarLegit, el.riskScoreDisplayLegit, risk_score, "legit");
+    if (brand_analysis && brand_analysis.is_official) {
+      if (el.legitBrandCard && el.legitBrandBadge) {
+        el.legitBrandBadge.textContent = `✓ Verified ${brand_analysis.brand} Domain`;
+        el.legitBrandCard.classList.remove("hidden");
+      }
+    }
     showState(el.stateLegit);
   }
+
+  // Render 3-Tier Explainable Security Breakdown (Phase 2)
+  renderExplainability(result);
+}
+
+/**
+ * Renders the 3-tier explainable security breakdown (Phase 2).
+ */
+function renderExplainability(result) {
+  if (!el.explainabilityContainer) return;
+
+  const exp = result.explanation;
+  const brand = result.brand_analysis;
+
+  // 1. Plain-English Summary
+  const summary = exp?.summary || result.message || "Analysis complete.";
+  if (el.explanationSummaryText) {
+    el.explanationSummaryText.textContent = summary;
+  }
+
+  // 2. Tier 1: Machine Learning
+  const ml = exp?.tiers?.machine_learning;
+  const mlClassification = ml?.classification || result.prediction || "unknown";
+  const confidenceStr = ml?.confidence_score || `${Math.round((result.risk_score || 0.5) * 100)}% confidence`;
+  if (el.tierMlVerdict) {
+    el.tierMlVerdict.textContent = `${confidenceStr} (${mlClassification})`;
+  }
+  if (el.tierMlTitle) {
+    el.tierMlTitle.textContent = result.model_version ? `Model v${result.model_version}` : "Random Forest / XGBoost";
+  }
+
+  if (el.tierMlSignalsList) {
+    el.tierMlSignalsList.innerHTML = "";
+    const signals = ml?.structural_signals || [];
+    if (signals.length > 0) {
+      signals.forEach((s) => {
+        const li = document.createElement("li");
+        li.className = s.type === "suspicious" ? "suspicious" : "safe";
+        li.textContent = `${s.label}: ${s.detail}`;
+        el.tierMlSignalsList.appendChild(li);
+      });
+    } else {
+      const li = document.createElement("li");
+      li.className = "safe";
+      li.textContent = "Standard alphanumeric structure and expected URL length.";
+      el.tierMlSignalsList.appendChild(li);
+    }
+  }
+
+  // 3. Tier 2: Heuristic & Brand Indicators
+  const heuristics = exp?.tiers?.heuristics;
+  const regDomain = heuristics?.actual_registered_domain || exp?.url_characteristics?.registered_domain || extractDomain(result.analyzed_url || "");
+  if (el.tierRegisteredDomain) {
+    el.tierRegisteredDomain.textContent = regDomain || "Unknown";
+  }
+
+  if (el.tierHeuristicSignalsList) {
+    el.tierHeuristicSignalsList.innerHTML = "";
+    if (brand?.is_impersonation) {
+      if (el.tierHeuristicTitle) el.tierHeuristicTitle.textContent = `Impersonating ${brand.brand}`;
+      const li = document.createElement("li");
+      li.className = "suspicious";
+      li.textContent = brand.warning || `Domain mimics protected brand ${brand.brand}.`;
+      el.tierHeuristicSignalsList.appendChild(li);
+
+      (brand.reasons || []).forEach((r) => {
+        const rLi = document.createElement("li");
+        rLi.className = "suspicious";
+        rLi.textContent = r;
+        el.tierHeuristicSignalsList.appendChild(rLi);
+      });
+    } else if (brand?.is_official) {
+      if (el.tierHeuristicTitle) el.tierHeuristicTitle.textContent = `Verified Official ${brand.brand}`;
+      const li = document.createElement("li");
+      li.className = "safe";
+      li.textContent = `Confirmed official registered property of ${brand.brand}.`;
+      el.tierHeuristicSignalsList.appendChild(li);
+    } else {
+      if (el.tierHeuristicTitle) el.tierHeuristicTitle.textContent = "No Brand Impersonation";
+      const li = document.createElement("li");
+      li.className = "safe";
+      li.textContent = "No brand impersonation, typosquatting, or deceptive subdomains detected.";
+      el.tierHeuristicSignalsList.appendChild(li);
+    }
+  }
+
+  // 4. Tier 3: Threat Intelligence
+  const threatIntel = exp?.tiers?.threat_intelligence;
+  if (el.tierThreatIntelStatus) {
+    el.tierThreatIntelStatus.textContent = threatIntel?.status === "matched" ? "Confirmed Threat Match" : "Local Inspection Only";
+  }
+  if (el.tierThreatIntelDesc) {
+    el.tierThreatIntelDesc.textContent = threatIntel?.detail || "No external threat intelligence match. Scanned via ML model and structural heuristics.";
+  }
+
+  // Show container
+  el.explainabilityContainer.classList.remove("hidden");
 }
 
 // ------------------------------------------------------------------
@@ -279,6 +476,14 @@ async function init() {
 
   checkHealth();
   loadHistory();
+
+  // Attach toggle listener for explainability breakdown (Phase 2)
+  if (el.breakdownToggleBtn) {
+    el.breakdownToggleBtn.addEventListener("click", function() {
+      const isHidden = el.breakdownContent.classList.toggle("hidden");
+      el.breakdownToggleBtn.setAttribute("aria-expanded", String(!isHidden));
+    });
+  }
 }
 
 init();

@@ -12,6 +12,8 @@
 
 const mlService = require("../services/mlService");
 const { validateScanRequestBody } = require("../utils/validators");
+const { brandDetector } = require("../services/brandDetector");
+const { buildSecurityExplanation } = require("../utils/explainability");
 
 /**
  * GET /api/health
@@ -44,57 +46,17 @@ async function healthCheck(req, res) {
 /**
  * POST /api/scan
  *
- * Accepts a URL from the Chrome extension, validates it, forwards it to the
- * ML service, and returns the prediction result.
+ * Accepts a URL from the Chrome extension, validates it, evaluates
+ * brand impersonation, forwards it to the ML service, and returns
+ * the combined prediction result.
  *
  * Request body: { "url": "https://example.com" }
- *
- * Response:
- * {
- *   "success": true,
- *   "prediction": "phishing" | "legitimate",
- *   "risk_score": 0.0–1.0,
- *   "risk_level": "high" | "medium" | "low",
- *   "message": "Human-readable explanation",
- *   "model_version": "1.0",
- *   "scanned_at": "ISO timestamp"
- * }
  */
 /**
  * normalizeUrlForModel(url)
  * -------------------------
  * Extracts just the origin (scheme + hostname) from a URL before
  * sending it to the ML model.
- *
- * Why origin-only (not path or query string)?
- *
- * The PhiUSIIL training dataset contains base-domain URLs like:
- *   https://www.google.com   (legitimate)
- *   http://evil-tracking.xyz (phishing)
- *
- * Real browser URLs often have paths and query strings that look
- * suspicious even for legitimate sites:
- *   /dp/B08J5F3G18          → Amazon product ID (looks random)
- *   /c/abc123-def456        → ChatGPT conversation ID (looks random)
- *   /watch?v=dQw4w9WgXcQ   → YouTube video ID
- *   ?sca_esv=80abbfb07...   → Google tracking params (many = and &)
- *
- * All phishing detection value comes from the DOMAIN:
- *   - Fake TLDs (.tk, .gq, .ru)
- *   - Hyphenated brand names (paypal-security-update.evil.com)
- *   - IP addresses instead of domains (192.168.1.1)
- *   - Excessive subdomains
- *   - No HTTPS
- *
- * Examples:
- *   IN:  https://www.google.com/search?q=hello&sca_esv=abc&rlz=...
- *   OUT: https://www.google.com
- *
- *   IN:  https://chat.openai.com/c/abc123-def456?model=gpt-4
- *   OUT: https://chat.openai.com
- *
- *   IN:  http://paypal-security-update.evil.com/verify?token=x
- *   OUT: http://paypal-security-update.evil.com   (still flagged!)
  */
 function normalizeUrlForModel(url) {
   try {
@@ -104,14 +66,6 @@ function normalizeUrlForModel(url) {
     let hostname = parsed.hostname;
 
     // Add www. prefix for bare domains (e.g., github.com → www.github.com)
-    // The model was trained on www.site.com patterns. Without www., the domain
-    // has NoOfSubDomain=0 and a very short URLLength, which the model has
-    // learned to associate with phishing (very short, no subdomain structure).
-    //
-    // We ONLY add www. when:
-    //   1. There is exactly one dot in the hostname (bare domain like github.com)
-    //   2. It's not an IP address
-    //   3. It's HTTPS (don't add www. to http:// suspicious domains)
     const dotCount = (hostname.match(/\./g) || []).length;
     const isIp = /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname);
     if (dotCount === 1 && !isIp && parsed.protocol === "https:") {
@@ -138,35 +92,92 @@ async function scanUrl(req, res, next) {
 
   const originalUrl = req.body.url.trim();
 
-  // Step 1b: Normalize — strip query params and fragments
-  // so complex legitimate URLs (Google Search, etc.) aren't falsely flagged
+  // Step 1b: Evaluate Brand Impersonation (Phase 1)
+  // Analyzes the full URL for typosquatting, misleading subdomains, homoglyphs, etc.
+  const brandAnalysis = brandDetector.analyze(originalUrl);
+
+  // Step 1c: Normalize — strip query params and fragments for the ML model
   const urlForModel = normalizeUrlForModel(originalUrl);
 
   try {
     // Step 2: Forward normalized URL to ML service and get prediction
     const mlResult = await mlService.getPrediction(urlForModel);
 
-    // Step 3: Convert risk_score (0=phishing, 1=legitimate) to a risk level
-    // This makes it easier for the extension to choose what color/icon to show
+    // Step 3: Combine ML predictions with heuristic Brand Impersonation evidence
+    // We do NOT automatically label solely on brand resemblance; we combine
+    // the evidence with the ML prediction to produce an explainable composite verdict.
+    let riskScore = mlResult.risk_score;
+    let prediction = mlResult.prediction;
     let riskLevel;
-    if (mlResult.risk_score < 0.4) {
-      riskLevel = "high";    // likely phishing
-    } else if (mlResult.risk_score < 0.65) {
-      riskLevel = "medium";  // uncertain
+    let message = mlResult.message;
+
+    if (brandAnalysis.isImpersonation) {
+      // Impersonation detected: combine evidence
+      // Reduce safety score proportionally based on brand impersonation confidence
+      const penalty = brandAnalysis.confidence === "high" ? 0.35 : 0.2;
+      riskScore = Math.max(0.05, Math.min(1.0, +(riskScore - penalty).toFixed(4)));
+
+      // If confidence is high or ML already had doubts, classify as phishing
+      if (brandAnalysis.confidence === "high" || mlResult.risk_score < 0.6) {
+        prediction = "phishing";
+        riskLevel = "high";
+      } else {
+        riskLevel = "medium";
+      }
+
+      // Compose a clear explanation detailing the brand impersonation
+      message = `${brandAnalysis.warning} ${mlResult.message}`;
     } else {
-      riskLevel = "low";     // likely legitimate
+      // No impersonation detected: standard ML-driven risk thresholds
+      if (riskScore < 0.4) {
+        riskLevel = "high";
+      } else if (riskScore < 0.65) {
+        riskLevel = "medium";
+      } else {
+        riskLevel = "low";
+      }
+
+      if (brandAnalysis.isOfficial) {
+        message = `Verified official domain of ${brandAnalysis.brand}. ${mlResult.message}`;
+      }
     }
 
-    // Step 4: Return the result
+    // Step 3b: Build Explainable Security Breakdown (Phase 2)
+    // Distinguishes ML predictions, heuristic indicators, and threat intelligence
+    const explanation = buildSecurityExplanation({
+      url: originalUrl,
+      mlResult,
+      brandAnalysis,
+      riskLevel,
+    });
+
+    // Step 4: Return the result with full transparency
     return res.json({
       success: true,
-      prediction: mlResult.prediction,
-      risk_score: mlResult.risk_score,
+      prediction,
+      risk_score: riskScore,
       risk_level: riskLevel,
-      message: mlResult.message,
+      message: explanation.summary || message,
       model_version: mlResult.model_version,
-      analyzed_url: urlForModel,    // what the model actually saw (no query params)
+      analyzed_url: urlForModel,
       scanned_at: new Date().toISOString(),
+      brand_analysis: {
+        is_impersonation: brandAnalysis.isImpersonation,
+        is_official: brandAnalysis.isOfficial,
+        brand: brandAnalysis.brand,
+        threat_type: brandAnalysis.threatType,
+        confidence: brandAnalysis.confidence,
+        reasons: brandAnalysis.reasons,
+        warning: brandAnalysis.warning,
+        official_domains: brandAnalysis.officialDomains,
+        details: brandAnalysis.details,
+      },
+      evidence: {
+        ml_prediction: mlResult.prediction,
+        ml_risk_score: mlResult.risk_score,
+        brand_impersonation: brandAnalysis.isImpersonation ? brandAnalysis.threatType : "none",
+      },
+      explanation,
     });
 
   } catch (err) {
@@ -176,3 +187,4 @@ async function scanUrl(req, res, next) {
 }
 
 module.exports = { healthCheck, scanUrl };
+

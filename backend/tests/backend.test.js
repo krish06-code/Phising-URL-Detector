@@ -17,7 +17,10 @@
  * The ML service does NOT need to be running — we test both cases.
  */
 
-const BASE_URL = "http://localhost:3001";
+const app = require("../app");
+
+let BASE_URL = "http://localhost:3001";
+let testServer = null;
 
 let passed = 0;
 let failed = 0;
@@ -119,8 +122,32 @@ async function runTests() {
         `risk_score out of range: ${data.risk_score}`);
       assert(["high", "medium", "low"].includes(data.risk_level),
         `Invalid risk_level: ${data.risk_level}`);
+      assert("brand_analysis" in data, "Missing 'brand_analysis'");
+      assert("is_impersonation" in data.brand_analysis, "Missing 'brand_analysis.is_impersonation'");
+      assert("evidence" in data, "Missing 'evidence'");
+      assert("explanation" in data, "Missing 'explanation'");
+      assert("summary" in data.explanation, "Missing 'explanation.summary'");
+      assert("tiers" in data.explanation, "Missing 'explanation.tiers'");
+      assert("machine_learning" in data.explanation.tiers, "Missing 'machine_learning tier'");
+      assert("heuristics" in data.explanation.tiers, "Missing 'heuristics tier'");
+      assert("threat_intelligence" in data.explanation.tiers, "Missing 'threat_intelligence tier'");
     } else {
       console.log("    (ML service not running — skipping field validation)");
+    }
+  });
+
+  await test("Flags brand impersonation in API response (if ML service is up)", async () => {
+    const { status, data } = await request("POST", "/api/scan", {
+      url: "https://amazon.com.example.net/login",
+    });
+    if (status === 200) {
+      assert(data.brand_analysis?.is_impersonation === true, "Should flag misleading subdomain as impersonation");
+      assertEqual(data.brand_analysis?.brand, "Amazon", "brand name");
+      assertEqual(data.brand_analysis?.threat_type, "misleading_subdomain", "threat_type");
+      assert(data.brand_analysis?.reasons?.length > 0, "Should include reasons");
+      assertEqual(data.risk_level, "high", "Risk level should be high");
+    } else {
+      console.log("    (ML service not running — skipping impersonation API test)");
     }
   });
 
@@ -189,17 +216,22 @@ async function runTests() {
   console.log(`Results: ${passed} passed, ${failed} failed`);
   console.log("=".repeat(50) + "\n");
 
-  if (failed > 0) process.exit(1);
+  if (failed > 0) {
+    if (testServer) testServer.close();
+    process.exit(1);
+  }
+  if (testServer) testServer.close();
 }
 
-// Check if backend is reachable before running tests
+// Check if backend is reachable before running tests, or launch in-process
 fetch(`${BASE_URL}/api/health`)
   .then(() => runTests())
   .catch(() => {
-    console.error(
-      `\nERROR: Cannot reach backend at ${BASE_URL}.\n` +
-      "Please start the backend first:\n" +
-      "  node backend/server.js\n"
-    );
-    process.exit(1);
+    console.log(`Backend is not running on ${BASE_URL}. Starting in-process test server...`);
+    testServer = app.listen(0, async () => {
+      const port = testServer.address().port;
+      BASE_URL = `http://localhost:${port}`;
+      console.log(`In-process test server running on ${BASE_URL}`);
+      await runTests();
+    });
   });

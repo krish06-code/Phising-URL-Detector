@@ -74,6 +74,18 @@
         </svg>
       </div>
       <h2 class="result-title phishing-title">⚠️ Phishing Detected</h2>
+
+      <!-- Brand Impersonation Alert (Phase 1) -->
+      <div class="brand-alert-card hidden" id="phishingBrandCard">
+        <div class="brand-alert-header">
+          <span class="brand-alert-icon">🛡️</span>
+          <span class="brand-alert-title" id="phishingBrandTitle">Brand Impersonation Warning</span>
+        </div>
+        <p class="brand-alert-desc" id="phishingBrandDesc"></p>
+        <ul class="brand-alert-reasons" id="phishingBrandReasons"></ul>
+        <div class="brand-alert-official" id="phishingBrandOfficial"></div>
+      </div>
+
       <p class="result-message" id="phishingMessage"></p>
       <div class="risk-meter">
         <div class="risk-label">Risk Score</div>
@@ -96,6 +108,12 @@
         </svg>
       </div>
       <h2 class="result-title legit-title">✓ Looks Legitimate</h2>
+
+      <!-- Verified Brand Domain (Phase 1) -->
+      <div class="brand-verified-card hidden" id="legitBrandCard">
+        <span class="brand-verified-badge" id="legitBrandBadge">✓ Verified Brand Domain</span>
+      </div>
+
       <p class="result-message" id="legitMessage"></p>
       <div class="risk-meter">
         <div class="risk-label">Safety Score</div>
@@ -118,6 +136,18 @@
         </svg>
       </div>
       <h2 class="result-title uncertain-title">⚡ Uncertain</h2>
+
+      <!-- Brand Alert (Phase 1) -->
+      <div class="brand-alert-card hidden" id="uncertainBrandCard">
+        <div class="brand-alert-header">
+          <span class="brand-alert-icon">🛡️</span>
+          <span class="brand-alert-title" id="uncertainBrandTitle">Brand Impersonation Warning</span>
+        </div>
+        <p class="brand-alert-desc" id="uncertainBrandDesc"></p>
+        <ul class="brand-alert-reasons" id="uncertainBrandReasons"></ul>
+        <div class="brand-alert-official" id="uncertainBrandOfficial"></div>
+      </div>
+
       <p class="result-message" id="uncertainMessage"></p>
       <div class="risk-meter">
         <div class="risk-label">Confidence</div>
@@ -155,6 +185,77 @@
     </div>
 
   </main>
+
+  <!-- ========== EXPLAINABLE SECURITY BREAKDOWN (Phase 2) ========== -->
+  <div class="explainability-container hidden" id="explainabilityContainer">
+    <button class="breakdown-toggle-btn" id="breakdownToggleBtn" type="button" aria-expanded="false">
+      <span class="toggle-left">
+        <span class="toggle-icon">🔍</span>
+        <span class="toggle-label">Why was this URL flagged?</span>
+      </span>
+      <span class="toggle-arrow" id="toggleArrow">▼</span>
+    </button>
+
+    <div class="breakdown-content hidden" id="breakdownContent">
+      <!-- Plain English Summary -->
+      <div class="summary-box">
+        <div class="summary-header">Plain-English Analysis</div>
+        <p class="summary-text" id="explanationSummaryText">Analyzing URL structure and indicators...</p>
+      </div>
+
+      <!-- 3-Tier Security Breakdown -->
+      <div class="tiers-container">
+
+        <!-- Tier 1: Machine Learning -->
+        <div class="tier-card">
+          <div class="tier-card-header">
+            <span class="tier-pill pill-ml">ML Model</span>
+            <span class="tier-title" id="tierMlTitle">Structural Model</span>
+          </div>
+          <div class="tier-metric-row">
+            <span class="tier-metric-label">Assessment:</span>
+            <span class="tier-metric-value" id="tierMlVerdict">--</span>
+          </div>
+          <div class="tier-signals-wrap">
+            <div class="tier-signals-label">Analyzed Structural Signals:</div>
+            <ul class="signals-list" id="tierMlSignalsList"></ul>
+          </div>
+        </div>
+
+        <!-- Tier 2: Heuristic & Brand Rules -->
+        <div class="tier-card">
+          <div class="tier-card-header">
+            <span class="tier-pill pill-heuristic">Heuristics</span>
+            <span class="tier-title" id="tierHeuristicTitle">Brand & Domain Rules</span>
+          </div>
+          <div class="tier-metric-row">
+            <span class="tier-metric-label">Registered Domain:</span>
+            <span class="tier-metric-value mono" id="tierRegisteredDomain">--</span>
+          </div>
+          <div class="tier-signals-wrap">
+            <div class="tier-signals-label">Heuristic Findings:</div>
+            <ul class="signals-list" id="tierHeuristicSignalsList"></ul>
+          </div>
+        </div>
+
+        <!-- Tier 3: Threat Intelligence -->
+        <div class="tier-card">
+          <div class="tier-card-header">
+            <span class="tier-pill pill-threatintel">Threat Intel</span>
+            <span class="tier-title">Reputation Database</span>
+          </div>
+          <div class="tier-metric-row">
+            <span class="tier-metric-label">Status:</span>
+            <span class="tier-metric-value" id="tierThreatIntelStatus">Local Inspection Only</span>
+          </div>
+          <p class="threatintel-desc" id="tierThreatIntelDesc">
+            No external database matches confirmed. The evaluation is calculated from local ML feature extraction and heuristic rules.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </div>
 
   <!-- ========== ACTION BUTTON ========== -->
   <div class="action-area">

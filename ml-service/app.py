@@ -19,7 +19,9 @@ Or from inside the ml-service folder:
 import os
 import sys
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 
 import joblib
 import numpy as np
@@ -36,7 +38,7 @@ import urllib.parse
 ML_DIR = Path(__file__).parent.parent / "ml"
 sys.path.insert(0, str(ML_DIR))
 
-from feature_extractor import FEATURE_NAMES, extract_features_as_list  # noqa: E402
+from feature_extractor import FEATURE_NAMES, extract_features, extract_features_as_list  # noqa: E402
 
 # ------------------------------------------------------------------
 # Logging setup — logs to console (visible in your terminal)
@@ -63,32 +65,7 @@ model_version = "unknown"
 model_ready = False    # False until model loads successfully
 
 
-# ------------------------------------------------------------------
-# FastAPI app setup
-# ------------------------------------------------------------------
-app = FastAPI(
-    title="PhishGuard ML Service",
-    description="Phishing URL detection using machine learning",
-    version="1.0",
-    docs_url="/docs",       # Swagger UI at /docs
-    redoc_url="/redoc",
-)
-
-# Allow requests from the Node.js backend only.
-# In production, replace "http://localhost:3001" with your actual backend URL.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3001", "http://127.0.0.1:3001"],
-    allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
-)
-
-
-# ------------------------------------------------------------------
-# Load model at application startup
-# ------------------------------------------------------------------
-@app.on_event("startup")
-async def load_model_on_startup():
+def load_model():
     """
     Load the trained model once when the server starts.
     This avoids reloading it on every request (which would be slow).
@@ -128,6 +105,38 @@ async def load_model_on_startup():
     except Exception as e:
         logger.error(f"Failed to load model: {e}")
         # Don't crash the server — /health will report not ready
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan context manager that loads the model at startup.
+    Replaces deprecated @app.on_event('startup').
+    """
+    load_model()
+    yield
+
+
+# ------------------------------------------------------------------
+# FastAPI app setup
+# ------------------------------------------------------------------
+app = FastAPI(
+    title="PhishGuard ML Service",
+    description="Phishing URL detection using machine learning",
+    version="1.0",
+    docs_url="/docs",       # Swagger UI at /docs
+    redoc_url="/redoc",
+    lifespan=lifespan,
+)
+
+# Allow requests from the Node.js backend only.
+# In production, replace "http://localhost:3001" with your actual backend URL.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3001", "http://127.0.0.1:3001"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
+)
 
 
 # ------------------------------------------------------------------
@@ -173,6 +182,7 @@ class PredictResponse(BaseModel):
     risk_score: float      # 0.0 = very likely phishing, 1.0 = very likely legitimate
     model_version: str
     message: str           # human-readable explanation
+    features: dict[str, Any] | None = None
 
 
 # ------------------------------------------------------------------
@@ -205,7 +215,7 @@ async def predict(request: PredictRequest):
     Important: risk_score is NOT a calibrated probability.
     It is the model's raw output — treat it as a relative indicator.
     """
-    if not model_ready:
+    if not model_ready or model is None:
         raise HTTPException(
             status_code=503,
             detail={
@@ -219,7 +229,8 @@ async def predict(request: PredictRequest):
     # Extract features using the same pipeline as training
     # IMPORTANT: We never fetch the URL — only analyze its text structure
     try:
-        feature_values = extract_features_as_list(url)
+        feature_dict = extract_features(url)
+        feature_values = [feature_dict[name] for name in FEATURE_NAMES]
     except Exception as e:
         logger.error(f"Feature extraction failed for URL: {url[:100]} — {e}")
         raise HTTPException(
@@ -283,4 +294,5 @@ async def predict(request: PredictRequest):
         risk_score=risk_score,
         model_version=model_version,
         message=message,
+        features=feature_dict,
     )
