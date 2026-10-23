@@ -257,6 +257,28 @@
     </div>
   </div>
 
+  <!-- ========== MANUAL URL SEARCH ========== -->
+  <div class="manual-scan-area" id="manualScanArea">
+    <div class="manual-scan-label">Or scan any URL</div>
+    <div class="manual-scan-row">
+      <input
+        type="text"
+        id="manualUrlInput"
+        class="manual-url-input"
+        placeholder="e.g. google.com or https://example.com/login"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+        aria-label="Enter a URL to scan"
+      />
+      <button class="manual-scan-btn" id="manualScanBtn" type="button" aria-label="Scan entered URL">
+        <span class="manual-scan-icon" aria-hidden="true">→</span>
+      </button>
+    </div>
+    <div class="manual-scan-error hidden" id="manualScanError" role="alert" aria-live="polite"></div>
+  </div>
+
   <!-- ========== ACTION BUTTON ========== -->
   <div class="action-area">
     <button class="scan-btn" id="scanBtn" type="button">

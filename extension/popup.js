@@ -78,6 +78,11 @@ const el = {
   tierHeuristicSignalsList:  document.getElementById("tierHeuristicSignalsList"),
   tierThreatIntelStatus:     document.getElementById("tierThreatIntelStatus"),
   tierThreatIntelDesc:       document.getElementById("tierThreatIntelDesc"),
+  // Manual URL Search Bar elements
+  manualScanArea:   document.getElementById("manualScanArea"),
+  manualUrlInput:   document.getElementById("manualUrlInput"),
+  manualScanBtn:    document.getElementById("manualScanBtn"),
+  manualScanError:  document.getElementById("manualScanError"),
 };
 
 const ALL_STATES = [
@@ -115,6 +120,88 @@ function setStatusDot(status) {
 function isSupportedUrl(url) {
   if (!url) return false;
   return url.startsWith("http://") || url.startsWith("https://");
+}
+
+function extractDomain(url) {
+  try { return new URL(url).hostname; }
+  catch { return url.substring(0, 50); }
+}
+
+// -----------------------------------------------------------------------
+// Manual URL: normalization & validation
+// -----------------------------------------------------------------------
+
+/**
+ * Blocked URI schemes that must never be scanned.
+ */
+const BLOCKED_SCHEMES = ["javascript:", "file:", "chrome:", "chrome-extension:", "about:", "data:", "blob:", "ftp:"];
+
+/**
+ * normalizeManualUrl(raw)
+ * -----------------------
+ * Accepts user-typed input and returns a fully-qualified URL string.
+ * Rules:
+ *  - Trims whitespace
+ *  - Prepends https:// when no scheme is supplied (e.g. "google.com", "www.amazon.com")
+ *  - Preserves an explicit http:// or https:// scheme unchanged
+ *  - Returns null if a blocked scheme is detected (caller should reject)
+ */
+function normalizeManualUrl(raw) {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  // Reject explicitly blocked schemes
+  for (const scheme of BLOCKED_SCHEMES) {
+    if (trimmed.toLowerCase().startsWith(scheme)) return null;
+  }
+
+  // Already has a valid HTTP scheme — return as-is
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  // Bare hostname or www. prefix — prepend https://
+  return "https://" + trimmed;
+}
+
+/**
+ * validateManualUrl(normalized)
+ * -----------------------------
+ * Parses the normalized URL and checks hostname validity.
+ * Returns { valid: true } or { valid: false, reason: "..."}.
+ */
+function validateManualUrl(normalized) {
+  if (!normalized) {
+    return { valid: false, reason: "Please enter a URL or domain name." };
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(normalized);
+  } catch {
+    return { valid: false, reason: "That doesn't look like a valid URL. Try: google.com or https://example.com" };
+  }
+
+  // Reject non-HTTP schemes that slipped through (e.g. ftp://)
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return { valid: false, reason: "Only http:// and https:// URLs are supported." };
+  }
+
+  const hostname = parsed.hostname;
+
+  // Must have at least one dot (reject bare labels like "localhost" unless IP)
+  const isIpv4 = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname);
+  const isIpv6 = hostname.startsWith("[") && hostname.endsWith("]");
+  if (!isIpv4 && !isIpv6 && !hostname.includes(".")) {
+    return { valid: false, reason: "Please enter a complete domain like google.com, not just a bare label." };
+  }
+
+  // Basic hostname character check (allows IDN punycode xn--)
+  if (!/^[a-zA-Z0-9.\-\[\]:]+$/.test(hostname)) {
+    return { valid: false, reason: "The hostname contains invalid characters." };
+  }
+
+  return { valid: true };
 }
 
 function formatTime(isoString) {
@@ -444,6 +531,96 @@ el.scanBtn.addEventListener("click", async function() {
     el.btnText.textContent = "Scan Again";
   }
 });
+
+// ------------------------------------------------------------------
+// Manual URL Scan handler
+// ------------------------------------------------------------------
+
+/**
+ * showManualError(msg)
+ * Displays an inline error below the input field and marks it with
+ * an error border. Clears automatically when the user starts typing.
+ */
+function showManualError(msg) {
+  if (!el.manualScanError || !el.manualUrlInput) return;
+  el.manualScanError.textContent = msg;
+  el.manualScanError.classList.remove("hidden");
+  el.manualUrlInput.classList.add("input-error");
+}
+
+function clearManualError() {
+  if (!el.manualScanError || !el.manualUrlInput) return;
+  el.manualScanError.classList.add("hidden");
+  el.manualScanError.textContent = "";
+  el.manualUrlInput.classList.remove("input-error");
+}
+
+async function runManualScan() {
+  const raw = el.manualUrlInput ? el.manualUrlInput.value : "";
+
+  // 1. Normalize
+  const normalized = normalizeManualUrl(raw);
+
+  // 2. Validate
+  const validation = validateManualUrl(normalized);
+  if (!validation.valid) {
+    showManualError(validation.reason);
+    return;
+  }
+  clearManualError();
+
+  // 3. Update the "Current Page" display to reflect the manually-entered URL
+  if (el.currentUrl) {
+    el.currentUrl.textContent = normalized;
+    el.currentUrl.classList.remove("unsupported");
+  }
+
+  // 4. Disable controls and show scanning state
+  if (el.manualScanBtn)  el.manualScanBtn.disabled  = true;
+  if (el.scanBtn)        el.scanBtn.disabled         = true;
+  el.scanMeta.classList.add("hidden");
+  showState(el.stateScanning);
+
+  try {
+    const response = await new Promise(function(resolve, reject) {
+      chrome.runtime.sendMessage({ type: "SCAN_URL", url: normalized }, function(resp) {
+        if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+        else resolve(resp);
+      });
+    });
+
+    if (!response)         throw new Error("No response from background service worker.");
+    if (!response.success) throw new Error(response.error || "Scan failed.");
+
+    renderResult(response.data);
+    loadHistory();
+
+  } catch (err) {
+    showError(err.message);
+    setStatusDot("offline");
+  } finally {
+    if (el.manualScanBtn) el.manualScanBtn.disabled = false;
+    if (el.scanBtn)       el.scanBtn.disabled        = false;
+  }
+}
+
+// Wire up the arrow button
+if (el.manualScanBtn) {
+  el.manualScanBtn.addEventListener("click", runManualScan);
+}
+
+// Wire up Enter key in the input
+if (el.manualUrlInput) {
+  el.manualUrlInput.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      runManualScan();
+    }
+  });
+
+  // Clear error as soon as the user modifies the input
+  el.manualUrlInput.addEventListener("input", clearManualError);
+}
 
 function showError(message) {
   if (message) el.errorMessage.textContent = message;
